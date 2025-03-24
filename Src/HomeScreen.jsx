@@ -1,21 +1,23 @@
 import React from "react";
 import  { useContext } from "react";
 import { useCart } from "./CartContext"; // ✅ Correct
+import { useState,useEffect } from "react";
+import * as Location from "expo-location";
 
 
-import { View, Text, Image, StyleSheet, TouchableOpacity, FlatList, ScrollView } from "react-native";
+import { View, Text,Button, Alert, Image, StyleSheet, TouchableOpacity, FlatList, ScrollView } from "react-native";
 
 const dishes = [
-  { id: "1", name: "Grilled Salmon", price: "$18", image: require("../assets/salmon.jpeg") },
-  { id: "2", name: "Pasta Alfredo", price: "$15", image: require("../assets/pasta.jpeg") },
-  { id: "3", name: "Veggie Pizza", price: "$12", image: require("../assets/pizza.webp") },
+  { id: "1", name: "Grilled Salmon", price: "1800", image: require("../assets/salmon.jpeg") },
+  { id: "2", name: "Pasta Alfredo", price: "1500", image: require("../assets/pasta.jpeg") },
+  { id: "3", name: "Veggie Pizza", price: "800", image: require("../assets/pizza.webp") },
 ];
 
 const signatureDishes = [   
-  { id: "1", name: "Truffle Steak", price: "$25", description: "Premium beef steak with truffle sauce", image: require("../assets/steak.jpeg") },
-  { id: "2", name: "Lobster Bisque", price: "$22", description: "Rich and creamy lobster soup", image: require("../assets/bisque.jpeg") },
-  { id: "3", name: "Sushi Platter", price: "$30", description: "Fresh sushi selection by our top chef", image: require("../assets/sushi.webp") },
-  { id: "4", name: "Chocolate Lava Cake", price: "$12", description: "Warm chocolate cake with melting center", image: require("../assets/cake.jpeg") },
+  { id: "1", name: "Truffle Steak", price: "2500", description: "Premium beef steak with truffle sauce", image: require("../assets/steak.jpeg") },
+  { id: "2", name: "Lobster Bisque", price: "2200", description: "Rich and creamy lobster soup", image: require("../assets/bisque.jpeg") },
+  { id: "3", name: "Sushi Platter", price: "3000", description: "Fresh sushi selection by our top chef", image: require("../assets/sushi.webp") },
+  { id: "4", name: "Chocolate Lava Cake", price: "1200", description: "Warm chocolate cake with melting center", image: require("../assets/cake.jpeg") },
 ];
 const reviews = [
     {
@@ -43,9 +45,42 @@ const reviews = [
   
 const HomeScreen = ({ navigation }) => {
   const { cart } = useCart();
+  const [location, setLocation] = useState(null);
+  const [address, setAddress] = useState(null);
+  const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    // Function to fetch location every 5 seconds
+    const locationInterval = setInterval(() => {
+      getLocation();
+    }, 5000);
 
+    return () => clearInterval(locationInterval); // Cleanup on unmount
+  }, []);
 
+  const getLocation = async () => {
+    setLoading(true);
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Denied", "Please allow location access to continue.");
+      setLoading(false);
+      return;
+    }
+
+    let currentLocation = await Location.getCurrentPositionAsync({});
+    setLocation(currentLocation.coords);
+
+    let geocode = await Location.reverseGeocodeAsync({
+      latitude: currentLocation.coords.latitude,
+      longitude: currentLocation.coords.longitude,
+    });
+
+    if (geocode.length > 0) {
+      let place = geocode[0];
+      setAddress(`${place.name || ""}, ${place.street || ""}, ${place.city || ""}, ${place.region || ""}, ${place.country || ""}`);
+    }
+    setLoading(false);
+  };
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
       <View style={styles.container}>
@@ -111,8 +146,9 @@ const HomeScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Our Signature Dishes */}
-        <Text style={styles.sectionTitle}>Our Signature Dishes</Text>
+       {/* Our Signature Dishes */}
+<Text style={styles.sectionTitle}>Our Signature Dishes</Text>
+
 <FlatList
   data={signatureDishes}
   keyExtractor={(item) => item.id}
@@ -120,18 +156,26 @@ const HomeScreen = ({ navigation }) => {
   showsHorizontalScrollIndicator={false}
   contentContainerStyle={styles.horizontalList}
   renderItem={({ item }) => (
-    <View style={styles.showcaseContainer}>
+    <TouchableOpacity 
+      style={styles.showcaseContainer} 
+      onPress={() => navigation.navigate("DishDetails", { selectedDish: item })}
+    >
       <Image source={item.image} style={styles.showcaseImage} />
       <View style={styles.overlay} />
       <Text style={styles.showcaseText}>{item.name}</Text>
       <Text style={styles.showcasePrice}>{item.price}</Text>
-    </View>
+    </TouchableOpacity>
   )}
 />
- {/* Call to Action */}
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Order Now</Text>
-        </TouchableOpacity>
+
+{/* Call to Action */}
+<TouchableOpacity 
+  style={styles.button} 
+  onPress={() => navigation.navigate("DishDetails")}
+>
+  <Text style={styles.buttonText}>Order Now</Text>
+</TouchableOpacity>
+
 
 {/* Customer Reviews Section */}
     
@@ -169,12 +213,38 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.vipPerks}>🍽️ Chef's Secret Menu</Text>
               <Text style={styles.vipPerks}>🍷 Complimentary Wine</Text>
 
-              <TouchableOpacity style={styles.vipButton}>
-                <Text style={styles.vipButtonText}>Reserve Now</Text>
-              </TouchableOpacity>
+              <TouchableOpacity
+  style={styles.vipButton}
+  onPress={() => navigation.navigate("ReserveNowScreen")}
+>
+  <Text style={styles.vipButtonText}>Reserve Now</Text>
+</TouchableOpacity>
+
             </View>
           </View>
         </View>
+        <Text style={styles.locationtitle}>📍 Real-Time Location Tracker</Text>
+
+      <TouchableOpacity style={styles.locationbutton} onPress={getLocation} disabled={loading}>
+        <Text style={styles.locationbuttonText}>{loading ? "Fetching..." : "Refresh Location"}</Text>
+      </TouchableOpacity>
+
+      {location && (
+        <View style={styles.card}>
+          <Text style={styles.label}>🌍 Coordinates:</Text>
+          <Text style={styles.value}>
+            Latitude: {location.latitude} {"\n"}
+            Longitude: {location.longitude}
+          </Text>
+        </View>
+      )}
+
+      {address && (
+        <View style={styles.card}>
+          <Text style={styles.label}>📌 Address:</Text>
+          <Text style={styles.value}>{address}</Text>
+        </View>
+      )}
 </View>
     </ScrollView>
   );
@@ -452,7 +522,51 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1a1a1a",
   },
-  
+  locationtitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  locationbutton: {
+    backgroundColor: "#007BFF",
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 2, height: 2 },
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  locationbuttonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  card: {
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 15,
+    width: "90%",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 2, height: 2 },
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#444",
+  },
+  value: {
+    fontSize: 15,
+    color: "#666",
+    marginTop: 5,
+  },
 });
 
 export default HomeScreen;

@@ -1,17 +1,22 @@
 import React from "react";
 import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet } from "react-native";
+import { useNavigation } from "@react-navigation/native"; // Import navigation hook
 import { useCart } from "./CartContext";
 
 const CartScreen = () => {
   const { cart, setCart } = useCart();
+  const navigation = useNavigation(); // Use navigation hook
 
   // 🛒 Function to remove an item from the cart
   const removeItem = (id) => {
     setCart(cart.filter((item) => item.id !== id));
   };
 
-  // 🛍️ Calculate total price
-  const totalPrice = cart.reduce((total, item) => total + parseFloat(item.price.slice(1)) * item.quantity, 0).toFixed(2);
+  // 🏷️ Calculate total price
+  const totalPrice = cart.reduce(
+    (total, item) => total + parseFloat(item.price.slice(1)) * item.quantity,
+    0
+  ).toFixed(2);
 
   return (
     <View style={styles.container}>
@@ -21,6 +26,7 @@ const CartScreen = () => {
         <Text style={styles.emptyCart}>Your cart is empty 😢</Text>
       ) : (
         <>
+          {/* 📝 List of items in the cart */}
           <FlatList
             data={cart}
             keyExtractor={(item) => item.id}
@@ -38,10 +44,13 @@ const CartScreen = () => {
             )}
           />
 
-          {/* 🏷️ Total Price Section */}
+          {/* 💳 Total Price Section */}
           <View style={styles.totalContainer}>
             <Text style={styles.totalText}>Total: ${totalPrice}</Text>
-            <TouchableOpacity style={styles.checkoutButton}>
+            <TouchableOpacity
+              style={styles.checkoutButton}
+              onPress={() => navigation.navigate("Checkout")} // Navigate to CheckoutScreen
+            >
               <Text style={styles.checkoutText}>Proceed to Checkout</Text>
             </TouchableOpacity>
           </View>
